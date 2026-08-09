@@ -1,0 +1,750 @@
+/*
+ * cube.css – Styles für den eingebetteten Würfel.
+ *
+ * Alle Selektoren sind mit `cb-` präfixiert, alle Variablen mit `--cb-`.
+ * Schrift und Textfarbe werden bewusst NICHT gesetzt, sondern von der Seite
+ * geerbt (Courier Prime, schwarz/weiss je nach Theme).
+ *
+ * Wichtig ist die durchgehende Kette aus `transform-style: preserve-3d`:
+ * .cb-scene → .cb-cube → .cb-cubie → .cb-facelet. Bricht sie an einer Stelle
+ * ab, flacht der Browser die Kindelemente auf eine Ebene ab und der Würfel
+ * zerfällt.
+ *
+ * --cb-cubie / --cb-half / --cb-size / --cb-body setzt cubeRenderer.js.
+ * Drei Attribute am .cb-app steuern das Aussehen (siehe embed.js):
+ *   data-scheme = minimal | classic
+ *   data-view   = solid | ghost | hints
+ *   data-camera = angled | front
+ */
+
+.cb-app {
+  --cb-scale: 1;
+  --cb-line: rgba(128, 128, 128, 0.28);
+  --cb-hint-gap: 92px;   /* Abstand der versetzten Tafeln zur Würfelfläche */
+
+  /*
+   * Blickwinkel auf den Würfel. Voreinstellung "angled": von schräg oben rechts
+   * auf U, F und R – die Ansicht, die alle drei Seiten gleich gut zeigt.
+   */
+  --cb-tilt: -26deg;   /* Neigung: wie weit von oben */
+  --cb-turn: -34deg;   /* Drehung: wie weit von der Seite */
+  text-align: center;
+  user-select: none;
+
+  /*
+   * Bezug für die Abfrage weiter unten. Es zählt die Breite, die die
+   * einbettende Seite hergibt – nicht die des Fensters. Derselbe Würfel steht
+   * mal in einer schmalen Spalte und mal über die ganze Seite.
+   */
+  container-type: inline-size;
+}
+
+/* ── Trainer links, Würfel mittig, Zeit und Beiwerk rechts ─────────────
+ *
+ * Vier Bausteine: die Bühne (`cb-main`), der Trainer, die Zeit und der Rest
+ * (`cb-extras`: Statistik, keys, settings). Ein Grid, weil drei davon je nach
+ * Breite an einer ANDEREN Stelle in der Reihenfolge stehen – schmal
+ * untereinander, breit als drei Spalten. Mit `order` allein ginge das nicht:
+ * dafür müssten sie sich zwischen die Kinder von `cb-main` schieben.
+ *
+ * Die Zeit ist bewusst ein eigener Bereich und sitzt NICHT in `cb-extras`.
+ * Breit gehört sie nach oben rechts, schmal aber direkt unter den Würfel und
+ * nicht hinter den Trainer – als eigener Bereich lässt sich das je Breite
+ * getrennt entscheiden.
+ */
+.cb-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "main"
+    "time"
+    "coach"
+    "extras";
+}
+
+.cb-main   { grid-area: main; }
+.cb-time   { grid-area: time; }
+.cb-extras { grid-area: extras; }
+
+.cb-coach {
+  grid-area: coach;
+  justify-self: center;
+  width: 100%;
+  max-width: 260px;
+}
+
+@container (min-width: 560px) {
+  /*
+   * Rechts steht eine leere Spalte, genauso breit wie der Trainer links. Sie
+   * trägt nichts – aber ohne sie sässe der Würfel mittig in SEINER Spalte und
+   * damit sichtbar rechts von der Seitenmitte. Mit ihr fällt die Mitte der
+   * Bühne mit der Mitte der Seite zusammen, und der Trainer hängt links daneben.
+   */
+  .cb-layout {
+    grid-template-columns: minmax(190px, 1fr) minmax(0, 2fr) minmax(190px, 1fr);
+    grid-template-areas:
+      "coach main   ."
+      "coach time   ."
+      "coach extras .";
+    gap: 16px 14px;
+    align-items: start;
+  }
+
+  .cb-coach { justify-self: stretch; max-width: none; }
+
+}
+
+/*
+ * Ab genug Breite zieht das Beiwerk aus der Mittelspalte in die bisher leere
+ * rechte – drei Spalten nebeneinander. Der Würfel bleibt dabei mittig, weil
+ * beide Randspalten gleich breit sind. Der eigentliche Gewinn ist die HÖHE:
+ * Statistik, keys und settings stehen nicht mehr unter der Bühne, wodurch die
+ * ganze Ansicht ohne Scrollen in ein übliches Fenster passt.
+ */
+@container (min-width: 860px) {
+  /*
+   * Zeit nach oben rechts, die Einstellungen darunter – und dadurch steht in
+   * der Mittelspalte nur noch der Würfel. Die Bühne läuft über beide Zeilen,
+   * damit sie die ganze Höhe der rechten Spalte nutzen kann.
+   */
+  .cb-layout {
+    grid-template-areas:
+      "coach main time"
+      "coach main extras";
+    grid-template-rows: auto 1fr;
+  }
+
+  /* Rechte Spalte: die Zeit führt, darunter beginnt das Beiwerk. */
+  .cb-time { margin-bottom: 2px; }
+
+  /* In einer schmalen Spalte bricht die Statistik lieber um als über den Rand. */
+  .cb-extras .cb-stats {
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin-top: 0;      /* die Spalte beginnt oben, kein Abstand zur Bühne nötig */
+  }
+
+  /*
+   * Zeitenliste und Klappbereiche sind sonst auf 210px gedeckelt und stünden
+   * mittig in einer breiteren Spalte – das sähe wieder nach Leerraum aus,
+   * genau dem, was die drei Spalten vermeiden sollen. Hier füllen sie ihre
+   * Spalte aus.
+   */
+  .cb-extras .cb-times,
+  .cb-extras .cb-fold { max-width: none; }
+
+  /*
+   * Sobald alles nebeneinander steht, kehrt sich der Engpass um: in der Breite
+   * ist Luft, in der Höhe nicht mehr – die Bühne bestimmt allein, ob die
+   * Ansicht ohne Scrollen passt. Deshalb hier eine eigene Skalierung.
+   *
+   * Sie steht auf .cb-layout und nicht auf .cb-app, weil .cb-app der
+   * Abfragebehälter ist: eine Container-Abfrage kann ihren eigenen Behälter
+   * nicht ansprechen, nur dessen Nachkommen.
+   */
+  .cb-layout { --cb-scale: 2.05; }
+
+  /*
+   * Der Front-Modus darf deutlich grösser: ohne Schrägblick ist der Würfel nur
+   * noch --cb-size breit statt gut ein Drittel mehr über die Diagonale, in der
+   * Mittelspalte steht also Platz frei.
+   *
+   * Begrenzt wird er hier NICHT von der Breite, sondern von der Höhe – bei 45°
+   * Neigung ist er 1,41 mal so hoch wie breit. Die Spalte gäbe noch mehr her,
+   * aber darüber beginnt die Ansicht zu scrollen. Wer einen hohen Bildschirm
+   * hat, dreht diese eine Zahl weiter auf.
+   */
+  .cb-app[data-camera="front"] .cb-layout { --cb-scale: 2.55; }
+
+  .cb-app[data-camera="front"] .cb-stage {
+    /* Passgenau zur echten Höhe (1,41) statt zur Diagonale der Schrägansicht. */
+    height: calc(var(--cb-size) * 1.5 * var(--cb-scale));
+  }
+
+  /* Die versetzten Tafeln brauchen zusätzlich Höhe – hier drückt es am meisten. */
+  .cb-app[data-view="hints"] .cb-layout { --cb-scale: 1.35; }
+}
+
+
+/* ── Farbschemata ───────────────────────────────────────────────────── */
+
+/* Reduziert, im Stil der Seite: schwarz / rot / weiss plus zwei Warmgrautöne.
+   Die sechs Werte sind über die Helligkeit getrennt, nicht über den Farbton. */
+.cb-app[data-scheme="minimal"] {
+  --cb-U: #f2f0ec;
+  --cb-D: #2a2a2a;
+  --cb-F: #d8232a;
+  --cb-B: #6d1114;
+  --cb-R: #b6b2aa;
+  --cb-L: #726e67;
+}
+
+/*
+ * Klassisches Würfelschema, kräftig wie am Timer – die Voreinstellung.
+ * Bewusst satter als die gedeckten WCA-Werte: auf schwarzem Grund und in der
+ * Grösse, in der die Aufkleber hier stehen, muss die Farbe im Vorbeischauen
+ * erkennbar sein, nicht erst beim Hinsehen.
+ */
+.cb-app[data-scheme="classic"] {
+  --cb-U: #ffffff;
+  --cb-D: #ffe600;
+  --cb-F: #00c93c;
+  --cb-B: #0a3bd8;
+  --cb-R: #ee1414;
+  --cb-L: #ff9500;
+}
+
+.cb-cap[data-face="U"], .cb-hintface[data-face="U"] { background: var(--cb-U); }
+.cb-cap[data-face="D"], .cb-hintface[data-face="D"] { background: var(--cb-D); }
+.cb-cap[data-face="F"], .cb-hintface[data-face="F"] { background: var(--cb-F); }
+.cb-cap[data-face="B"], .cb-hintface[data-face="B"] { background: var(--cb-B); }
+.cb-cap[data-face="R"], .cb-hintface[data-face="R"] { background: var(--cb-R); }
+.cb-cap[data-face="L"], .cb-hintface[data-face="L"] { background: var(--cb-L); }
+
+/* ── Scramble ───────────────────────────────────────────────────────── */
+.cb-scramble {
+  font-size: 12px;
+  line-height: 1.5;
+  word-spacing: 0.3em;
+  opacity: 0.8;
+  min-height: 2.6em;
+  margin-bottom: 4px;
+}
+
+/* ── 3D-Bühne ───────────────────────────────────────────────────────── */
+.cb-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--cb-size) * 1.55 * var(--cb-scale));
+  perspective: 1500px;
+  perspective-origin: 50% 45%;
+}
+
+.cb-scene {
+  position: relative;
+  width: var(--cb-size);
+  height: var(--cb-size);
+  transform-style: preserve-3d;
+  /* Die "Kamera". Beide Winkel kommen aus data-camera am .cb-app. */
+  transform: scale(var(--cb-scale)) rotateX(var(--cb-tilt)) rotateY(var(--cb-turn));
+}
+
+/*
+ * ── Kamera "front": der Würfel, wie man ihn in der Hand hält ──────────
+ *
+ * Genau auf die Kante zwischen U und F geschaut: 45° von oben, ohne jede
+ * seitliche Drehung. Beide Seiten stehen dadurch im selben Winkel zum
+ * Betrachter und sind gleich gut zu lesen.
+ *
+ * `--cb-turn: 0` heisst zugleich: L und R stehen exakt auf der Kante zum
+ * Betrachter und sind nicht mehr zu sehen. Das ist so gewollt – wer die
+ * Seiten braucht, nimmt "angled" oder schaltet "hints" dazu (das holt L, D und
+ * B als versetzte Tafeln heraus; nur R bleibt in dieser Ansicht verdeckt).
+ */
+.cb-app[data-camera="front"] {
+  --cb-tilt: -45deg;
+  --cb-turn: 0deg;
+}
+
+/*
+ * Geradeaus betrachtet muss die Tiefe allein aus der Perspektive kommen – es
+ * gibt ja keinen Schrägblick mehr, der sie zeigt. Der kurze Abstand staucht die
+ * hintere Kante sichtbar gegenüber der vorderen und macht daraus wieder einen
+ * Körper statt zweier flacher Tafeln.
+ *
+ * Warum so viel kürzer als die 1500px der Schrägansicht: `scale()` ist zweiter
+ * Dimension und lässt die Tiefe des Würfels unberührt. Er wird also breiter und
+ * höher, bleibt aber 192px tief – je grösser er skaliert wird, desto schwächer
+ * wirkt dieselbe Perspektive. Die Verkürzung muss das ausgleichen.
+ */
+.cb-app[data-camera="front"] .cb-stage {
+  perspective: 850px;
+}
+
+.cb-cube {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+/*
+ * Ein Cubie. Es wird über left/top + negative Margins am Würfelmittelpunkt
+ * ausgerichtet – bewusst NICHT über translate(-50%,-50%), weil `transform`
+ * komplett von cubeRenderer.js gesetzt wird.
+ */
+.cb-cubie {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin-left: calc(var(--cb-half) * -1);
+  margin-top: calc(var(--cb-half) * -1);
+  width: var(--cb-cubie);
+  height: var(--cb-cubie);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.cb-facelet {
+  position: absolute;
+  inset: 0;
+  background: var(--cb-body);
+  /* Schliesst Haarrisse zwischen benachbarten Flächen. */
+  box-shadow: 0 0 0 1px var(--cb-body);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+}
+
+/*
+ * Der farbige Aufkleber – sein Rand erzeugt das schwarze Raster.
+ * `--cb-inset` ist der Abstand zur Cubie-Kante und damit die Breite der
+ * schwarzen Fuge; der "ghost"-Modus dreht ihn weiter auf.
+ */
+.cb-facelet > .cb-cap {
+  position: absolute;
+  inset: var(--cb-inset, 6px);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px #000;
+  transition: opacity 0.2s ease;
+  -webkit-transform: translateZ(0.5px);
+  transform: translateZ(0.5px);
+}
+
+/* ── Modus "ghost": Körper unsichtbar, nur noch schwebende Flächen ──── */
+.cb-app[data-view="ghost"] .cb-facelet {
+  background: transparent;
+  box-shadow: none;
+}
+
+/*
+ * Die Sticker bleiben deckend. Der Durchblick entsteht allein dadurch, dass
+ * der Würfelkörper fehlt: durch die Lücken zwischen den Kacheln sieht man die
+ * Kanten und Flächen der dahinterliegenden Seiten.
+ *
+ * Die Fuge ist dabei schmaler als man denkt: nachgemessen belegt der Aufkleber
+ * rund 84 % der Cubie-Fläche, also 5px Rand bei 64px Kante. Der Durchblick
+ * kommt fast vollständig vom fehlenden Körper, nicht von breiten Lücken – mit
+ * weiten Fugen zerfällt der Würfel optisch in Einzelplättchen.
+ */
+.cb-app[data-view="ghost"] {
+  --cb-inset: 5px;
+}
+
+.cb-app[data-view="ghost"] .cb-cap {
+  border-radius: 2px;
+}
+
+/* ── Modus "hints": versetzte Tafeln der verdeckten Seiten ──────────── */
+.cb-hintface {
+  position: absolute;
+  inset: var(--cb-inset, 6px);
+  display: none;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px #000;
+  -webkit-backface-visibility: visible;
+  backface-visibility: visible;
+}
+
+/* data-show setzt cubeRenderer.js für alle gerade abgewandten Seiten. */
+.cb-app[data-view="hints"] .cb-hintface[data-show] { display: block; }
+
+/* Die Tafeln brauchen ringsum Platz. */
+.cb-app[data-view="hints"] { --cb-scale: 0.78; }
+.cb-app[data-view="hints"] .cb-stage {
+  height: calc(var(--cb-size) * 2.45 * var(--cb-scale));
+}
+
+/* ── Timer ──────────────────────────────────────────────────────────── */
+.cb-time {
+  font-size: 44px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.cb-app[data-state="idle"] .cb-time,
+.cb-app[data-state="scrambling"] .cb-time { opacity: 0.35; }
+.cb-app[data-state="ready"] .cb-time      { color: var(--accent, #d8232a); }
+.cb-app[data-state="solved"] .cb-time     { color: var(--accent, #d8232a); }
+
+.cb-hint {
+  font-size: 11px;
+  opacity: 0.6;
+  min-height: 1.4em;
+  margin-top: 2px;
+}
+
+/* ── Coach ──────────────────────────────────────────────────────────── */
+/*
+ * Alles im Trainer hängt an DIESER Schriftgrösse – die Beschriftungen ebenso
+ * wie das Bild der letzten Ebene, die aufgeklappten Steine und die Zugliste.
+ * Sie sind darum durchgehend in `em` notiert und nicht in Pixeln: wer den
+ * Trainer grösser oder kleiner haben will, dreht hier eine Zahl, und das Panel
+ * wächst als Ganzes mit, statt dass Text und Diagramme auseinanderlaufen.
+ */
+.cb-coach {
+  font-size: 15px;
+  padding: 0.85em 1em;
+  border: 1px solid var(--cb-line);
+  text-align: left;
+
+  /*
+   * Muss sein, und zwar hier statt global: die Spalte im Grid oben ist auf
+   * 172px festgelegt, `width: 100%` misst aber ohne Polsterung und Rahmen. Mit
+   * content-box käme das Panel auf 198px und schöbe sich über den Würfel. Die
+   * einbettende Seite gibt das nicht vor – cube.css erbt Schrift und Farbe,
+   * aber bewusst kein Boxmodell.
+   */
+  box-sizing: border-box;
+}
+
+.cb-coach[hidden] {
+  display: block;
+  visibility: visible;
+  min-height: 200px;
+}
+
+.cb-coach[hidden] > * {
+  display: none;
+}
+
+.cb-coach-stage {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5em;
+  font-size: 1.05em;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.7em;
+}
+
+.cb-coach-stage b { font-weight: 700; }
+
+/* Der Formname ("Sune", "T-Perm") – zweitrangig, aber er ist der Merkanker. */
+.cb-coach-stage span {
+  font-size: 0.85em;
+  opacity: 0.5;
+}
+
+/* ── Bild der letzten Ebene (OLL / PLL) ─────────────────────────────────
+ *
+ * Aufbau wie auf einem Algorithmenblatt: die Deckfläche als 3×3, ringsum
+ * schmale Streifen für die Seitenaufkleber. Die vier Ecken des 5×5-Rasters
+ * bleiben leer.
+ *
+ * OLL bekommt vom Solver nur dort eine Farbe, wo die Deckfarbe schon oben
+ * liegt – der Rest bleibt dunkel und man sieht die Form. PLL bekommt die
+ * Deckfläche geschlossen und ringsum die echten Farben; daran liest man ab,
+ * welcher Fall vorliegt.
+ */
+.cb-coach-diagram {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.85em;
+}
+
+.cb-coach-diagram:empty { display: none; }
+
+.cb-ll {
+  display: grid;
+  grid-template-columns: 0.45em repeat(3, 1.6em) 0.45em;
+  grid-template-rows: 0.45em repeat(3, 1.6em) 0.45em;
+  gap: 0.15em;
+}
+
+.cb-ll i {
+  border-radius: 1px;
+  background: transparent;
+}
+
+/*
+ * Ein belegtes Feld bekommt einen neutralen Ring nach aussen. Das ist keine
+ * Zierde: die Deckfarbe ist im Schema "minimal" fast schwarz, ein reines
+ * Farbfeld wäre auf dunklem Grund unsichtbar. Der Ring macht "hier liegt
+ * etwas" unabhängig davon lesbar, welche Farbe das Schema gerade vergibt.
+ */
+.cb-ll i[data-face] { box-shadow: 0 0 0 1px rgba(128, 128, 128, 0.5); }
+
+/* Ein leeres Feld der Deckfläche ist hohl – ein leerer Streifen ist gar nichts. */
+.cb-ll i[data-kind="top"]:not([data-face]) {
+  box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.22);
+}
+
+.cb-ll i[data-face="U"] { background: var(--cb-U); }
+.cb-ll i[data-face="D"] { background: var(--cb-D); }
+.cb-ll i[data-face="F"] { background: var(--cb-F); }
+.cb-ll i[data-face="B"] { background: var(--cb-B); }
+.cb-ll i[data-face="R"] { background: var(--cb-R); }
+.cb-ll i[data-face="L"] { background: var(--cb-L); }
+
+/* ── Die Steine, um die es gerade geht ──────────────────────────────────
+ *
+ * Der Algorithmus allein sagt nicht, WORAN man arbeitet. Deshalb stehen die
+ * beiden Steine darüber – aufgeklappt, in ihren echten Farben, mit ihrem
+ * Fundort. Die Farbfelder kommen aus denselben CSS-Variablen wie die Aufkleber
+ * am Würfel, das Schema gilt also automatisch auch hier.
+ */
+.cb-coach-pieces {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  margin-bottom: 0.7em;
+}
+
+.cb-coach-pieces:empty { display: none; }
+
+.cb-coach-pieces figure {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  margin: 0;
+  padding-left: 0.5em;
+  border-left: 2px solid var(--accent, #d8232a);
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+/*
+ * Ein Stein, der schon sitzt, bleibt sichtbar – aber zurückgenommen. Beim
+ * Einsetzen eines Paars sieht man so, welche Hälfte noch fehlt.
+ */
+.cb-coach-pieces figure[data-where="placed"] {
+  border-left-color: var(--cb-line);
+  opacity: 0.4;
+}
+
+/*
+ * Aufgeklappter Stein. Die Ecke füllt drei Zellen und wird dadurch von selbst
+ * L-förmig, die Kante zwei – ohne Sonderfall im JavaScript.
+ */
+.cb-piece {
+  display: grid;
+  grid-template-columns: repeat(2, 1em);
+  grid-auto-rows: 1em;
+  gap: 0.15em;
+  flex: none;
+}
+
+.cb-piece i {
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.cb-piece i[data-face="U"] { background: var(--cb-U); }
+.cb-piece i[data-face="D"] { background: var(--cb-D); }
+.cb-piece i[data-face="F"] { background: var(--cb-F); }
+.cb-piece i[data-face="B"] { background: var(--cb-B); }
+.cb-piece i[data-face="R"] { background: var(--cb-R); }
+.cb-piece i[data-face="L"] { background: var(--cb-L); }
+
+.cb-coach-pieces figcaption {
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+
+.cb-coach-pieces figcaption span {
+  display: block;
+  opacity: 0.5;
+}
+
+/*
+ * Ein Listeneintrag je Zug: oben die Notation, darunter die Taste. Die
+ * Ausrichtung untereinander ist der ganze Zweck – so lernt man beim Ablesen
+ * des Algorithmus die Belegung mit.
+ */
+.cb-coach-moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-height: 2.4em;
+}
+
+.cb-coach-moves li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1em;
+  min-width: 1.6em;
+  padding: 0.2em 0.3em;
+  border: 1px solid transparent;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.cb-coach-moves b {
+  font-size: 1.05em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.cb-coach-moves span {
+  font-size: 0.85em;
+  line-height: 1;
+  opacity: 0.55;
+}
+
+.cb-coach-moves em { font-style: normal; }
+
+/* Erster von zwei Anschlägen eines Doppelzugs ist erledigt. */
+.cb-coach-moves em[data-done] { opacity: 0.25; }
+
+/* Bereits ausgeführt. */
+.cb-coach-moves li[data-done] { opacity: 0.3; }
+
+/* Der Zug, der jetzt dran ist. */
+.cb-coach-moves li[data-next] {
+  border-color: var(--accent, #d8232a);
+}
+
+.cb-coach-moves li[data-next] span {
+  opacity: 1;
+  color: var(--accent, #d8232a);
+  font-weight: 700;
+}
+
+.cb-coach-note {
+  margin-top: 0.6em;
+  font-size: 0.85em;
+  line-height: 1.5;
+  opacity: 0.5;
+}
+
+/* Noch nicht gebaute Stufen sollen sichtbar als Baustelle erkennbar sein. */
+.cb-coach[data-pending] .cb-coach-stage { opacity: 0.5; }
+
+/* ── Statistik und Zeitenliste ──────────────────────────────────────── */
+.cb-stats {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 18px;
+}
+
+.cb-stats b { font-weight: 700; }
+
+.cb-times {
+  list-style: none;
+  margin: 10px auto 0;
+  padding: 0;
+  max-width: 210px;
+  font-size: 11px;
+}
+
+.cb-times li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--cb-line);
+}
+
+.cb-times li span { opacity: 0.5; }
+
+/* ── Aufklappbare Bereiche (keys / settings) ────────────────────────── */
+.cb-fold {
+  max-width: 210px;
+  margin: 14px auto 0;
+  font-size: 11px;
+  text-align: left;
+}
+
+.cb-fold summary {
+  cursor: pointer;
+  text-align: center;
+  opacity: 0.6;
+  padding: 4px 0;
+  list-style: none;
+}
+
+.cb-fold summary::-webkit-details-marker { display: none; }
+.cb-fold summary::before { content: "[ "; }
+.cb-fold summary::after  { content: " ]"; }
+
+.cb-fold table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+
+.cb-fold td,
+.cb-fold th {
+  padding: 3px 0;
+  font-weight: 400;
+  border-bottom: 1px solid var(--cb-line);
+}
+
+.cb-fold td { opacity: 0.75; }
+
+.cb-fold th {
+  text-align: right;
+  font-weight: 700;
+}
+
+/* ── Einstellungen ──────────────────────────────────────────────────── */
+.cb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--cb-line);
+}
+
+.cb-row > span { opacity: 0.6; }
+
+.cb-opts { display: flex; gap: 4px; }
+
+.cb-opts button {
+  font: inherit;
+  font-size: 10px;
+  line-height: 1;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--cb-line);
+  padding: 4px 7px;
+  cursor: pointer;
+  text-transform: lowercase;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.cb-opts button[aria-pressed="true"] {
+  background: var(--accent, #d8232a);
+  border-color: var(--accent, #d8232a);
+  color: #fff;
+  font-weight: 700;
+}
+
+.cb-note {
+  padding-top: 8px;
+  opacity: 0.5;
+  line-height: 1.5;
+}
+
+/* ── Kleine Displays & Höhenanpassung für Zero-Scroll ──────────────── */
+@media (max-width: 420px) {
+  .cb-app  { --cb-scale: 0.72; }
+  .cb-app[data-view="hints"] { --cb-scale: 0.58; }
+  .cb-time { font-size: 36px; }
+}
+
+@media (max-height: 850px) {
+  .cb-layout { --cb-scale: 1.4; }
+  .cb-app[data-view="hints"] .cb-layout { --cb-scale: 1.0; }
+}
+
+@media (max-height: 720px) {
+  .cb-layout { --cb-scale: 1.2; }
+  .cb-app[data-view="hints"] .cb-layout { --cb-scale: 0.85; }
+}
+
+@media (max-height: 600px) {
+  .cb-layout { --cb-scale: 0.95; }
+}
+
