@@ -68,10 +68,21 @@ const HINTS = {
   timer:   'hold space, let go to start',
 };
 
+/** Dieselben Sätze für ein Gerät ohne Tastatur. */
+const TOUCH_HINTS = {
+  virtual: 'the virtual cube needs a keyboard – switch to timer',
+  timer:   'hold the card, let go to start',
+};
+
+const hintFor = (mode) => (isTouchOnly() ? TOUCH_HINTS : HINTS)[mode];
+
 /**
  * Die feste Tastenliste in der Zeit-Karte. Sie steht dort, weil man sie genau
  * dann sucht, wenn man auf die Uhr schaut – und weil sonst niemand erfährt,
  * dass es esc überhaupt gibt.
+ *
+ * Auf Geräten ohne Tastatur steht dort, was man dort tatsächlich tun kann.
+ * Eine Liste von Tasten, die es nicht gibt, ist keine Hilfe, sondern Ballast.
  */
 const BINDS = {
   virtual: [
@@ -84,7 +95,22 @@ const BINDS = {
     ['esc', 'abort'],
     ['⌫', 'new scramble'],
   ],
+  touch: [
+    ['hold', 'start'],
+    ['tap', 'stop'],
+    ['new', 'next scramble'],
+  ],
 };
+
+/**
+ * Kein Zeigegerät, kein Hover – also ein Touchgerät ohne Tastatur.
+ *
+ * Wird bei jedem Aufruf frisch gemessen und nicht einmalig gemerkt: an ein
+ * Tablet lässt sich mitten in der Sitzung eine Tastatur anstecken, und dann
+ * soll der virtuelle Würfel sofort wieder eine echte Möglichkeit sein.
+ */
+const isTouchOnly = () =>
+  window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
 /**
  * Das Bild der letzten Ebene, wie auf einem Algorithmenblatt: die Deckfläche
@@ -162,7 +188,14 @@ function loadSettings() {
       return { ...DEFAULT_SETTINGS, ...parsed };
     }
   } catch (e) { /* localStorage kann blockiert sein – dann eben Defaults */ }
-  return { ...DEFAULT_SETTINGS };
+
+  /*
+   * Beim ERSTEN Besuch entscheidet das Gerät: Der virtuelle Würfel braucht gut
+   * zwanzig Tasten, auf einem Handy ist er nicht bedienbar. Die Stoppuhr
+   * dagegen ist dort genau richtig – Würfel in der Hand, Telefon auf dem
+   * Tisch. Eine spätere eigene Wahl bleibt gespeichert und schlägt das hier.
+   */
+  return { ...DEFAULT_SETTINGS, mode: isTouchOnly() ? 'timer' : DEFAULT_SETTINGS.mode };
 }
 
 function saveSettings(settings) {
@@ -325,6 +358,20 @@ class CubeApp {
     if (document.fonts) document.fonts.ready.then(() => this.#scheduleCharts());
 
     /*
+     * Steckt jemand eine Tastatur an das Tablet, ändert sich die Antwort auf
+     * `(hover: none)` – dann müssen Hinweis und Tastenliste mitziehen. Ohne
+     * diesen Listener stünde bis zum Neuladen "tap & hold" auf einem Gerät,
+     * an dem längst die Leertaste die bessere Wahl ist.
+     */
+    this.pointerQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
+    this.onPointerChange = () => {
+      if (!this.mounted) return;
+      this.#applySettings();
+      this.#setPhase(this.phase, hintFor(session.settings.mode));
+    };
+    this.pointerQuery.addEventListener('change', this.onPointerChange);
+
+    /*
      * Die Belegung der echten Tastatur steht erst asynchron fest. Bis dahin
      * gilt QWERTY – das ist kein Zwischenzustand, der stört, denn ohne
      * Tastendruck sieht man den Unterschied ohnehin nicht.
@@ -346,6 +393,7 @@ class CubeApp {
     if (!this.mounted) return;
     if (this.unbind) this.unbind();
     if (this.resizeObserver) this.resizeObserver.disconnect();
+    if (this.pointerQuery) this.pointerQuery.removeEventListener('change', this.onPointerChange);
     if (this.animator) this.animator.clear();
     if (this.timer) this.timer.reset();
     hideTip();
@@ -775,7 +823,7 @@ class CubeApp {
       this.state.reset();
       this.renderer.render();
       this.el.scramble.textContent = 'press space to scramble';
-      this.#setPhase('idle', HINTS.virtual);
+      this.#setPhase('idle', hintFor('virtual'));
     }
 
     if (!initial) this.#recomputeCoach();
@@ -812,11 +860,18 @@ class CubeApp {
     if (hint !== undefined) this.el.hint.textContent = hint;
   }
 
-  /** Die feste Tastenliste unter der Uhr – sie hängt nur am Modus. */
+  /** Die feste Tastenliste unter der Uhr – sie hängt am Modus und am Gerät. */
   #renderBinds() {
-    this.el.binds.innerHTML = BINDS[session.settings.mode]
+    const touch = isTouchOnly();
+    const binds = touch && session.settings.mode === 'timer'
+      ? BINDS.touch : BINDS[session.settings.mode];
+
+    this.el.binds.innerHTML = binds
       .map(([key, what]) => `<span><kbd>${key}</kbd>${what}</span>`)
       .join('');
+
+    // Trägt die Warnung im Virtual-Modus und blendet die keys-Tabelle aus.
+    this.el.app.toggleAttribute('data-touch', touch);
   }
 
   #paintTimer() {
@@ -1254,7 +1309,7 @@ class CubeApp {
       this.renderer.render();
       // `keepState`: nach einem Versuch soll die gestoppte Zeit stehen bleiben,
       // während der nächste Scramble schon danebensteht.
-      if (!keepState) this.#setPhase('ready', HINTS.timer);
+      if (!keepState) this.#setPhase('ready', hintFor('timer'));
       return;
     }
 
@@ -1263,7 +1318,7 @@ class CubeApp {
     this.animator.enqueue(this.scramble, {
       duration: SCRAMBLE_DURATION,
       onDone: () => {
-        this.#setPhase('ready', 'ready – your first turn starts the clock');
+        this.#setPhase('ready', hintFor('virtual'));
         this.#recomputeCoach();
       },
     });
@@ -1301,7 +1356,7 @@ class CubeApp {
     // Versuch mit dem Abbruch vorbei, der Würfel bleibt, wie er steht.
     const back = session.settings.mode === 'timer' ? 'ready' : 'idle';
     const note = wasRunning ? 'attempt discarded'
-      : wasHolding ? 'not started' : HINTS[session.settings.mode];
+      : wasHolding ? 'not started' : hintFor(session.settings.mode);
     this.#setPhase(back, note);
     if (session.settings.mode === 'virtual') this.#recomputeCoach();
   }
@@ -1319,7 +1374,7 @@ class CubeApp {
     this.state.reset();
     this.renderer.render();
     this.el.scramble.textContent = 'press space to scramble';
-    this.#setPhase('idle', HINTS.virtual);
+    this.#setPhase('idle', hintFor('virtual'));
     this.#renderStrip();
     this.#recomputeCoach();
   }

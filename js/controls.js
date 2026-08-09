@@ -64,22 +64,31 @@ export function bindKeyboard(handlers) {
       return;
     }
 
-    if (event.repeat) return;            // Dauerfeuer beim Gedrückthalten
-
-    if (timerMode && event.key === ' ') {
+    /*
+     * Die Leertaste wird IMMER abgefangen, auch bei Wiederholungen. Sie ist im
+     * Browser die Bild-ab-Taste: hält man sie zum Starten gedrückt, feuert sie
+     * nach kurzer Zeit weiter, und jeder dieser Anschläge scrollt die Seite –
+     * man stünde beim Loslassen am Seitenende. Deshalb steht das vor der
+     * Abfrage auf `repeat` und nicht dahinter.
+     */
+    if (event.key === ' ') {
       event.preventDefault();
-      if (!holding) {
-        holding = true;
-        handlers.onHold();
+      if (event.repeat) return;
+
+      if (timerMode) {
+        if (!holding) {
+          holding = true;
+          handlers.onHold();
+        }
+      } else {
+        handlers.onScramble();
       }
       return;
     }
 
+    if (event.repeat) return;            // Dauerfeuer beim Gedrückthalten
+
     switch (event.key) {
-      case ' ':
-        event.preventDefault();          // sonst scrollt die Seite
-        handlers.onScramble();
-        return;
       case 'Escape':
         event.preventDefault();
         handlers.onAbort();

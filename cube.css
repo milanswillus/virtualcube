@@ -1537,6 +1537,33 @@
 
 .cb-data-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 
+/* ── Geräte ohne Tastatur ───────────────────────────────────────────────
+ *
+ * `data-touch` setzt embed.js, wenn weder Zeigegerät noch Hover vorhanden
+ * sind. Zu sehen ist dann nur, was dort auch geht: die Stoppuhr. Der virtuelle
+ * Würfel bleibt WÄHLBAR – an ein Tablet kann eine Tastatur kommen –, aber er
+ * trägt sichtbar, dass er eine braucht, statt den Nutzer raten zu lassen.
+ */
+.cb-app[data-touch] .cb-keys { display: none; }
+
+.cb-app[data-touch] .cb-switch[data-key="mode"] button[data-value="virtual"] {
+  opacity: 0.4;
+}
+
+.cb-app[data-touch][data-mode="virtual"] .cb-switch[data-key="mode"] button[data-value="virtual"] {
+  opacity: 1;
+}
+
+/* Die Zeit-Karte ist dort die Bedienfläche – das darf man ihr ansehen. */
+.cb-app[data-touch][data-mode="timer"] .cb-timecard {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cb-app[data-touch][data-mode="timer"] .cb-timecard:active {
+  border-color: var(--cb-accent);
+}
+
 /* ── Kleine Displays ────────────────────────────────────────────────── */
 
 /*
