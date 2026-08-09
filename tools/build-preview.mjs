@@ -76,12 +76,12 @@ const html = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>cube (v2)</title>
+<title>cherrychrono</title>
 <!--
   Erzeugt von tools/build-preview.mjs – NICHT von Hand ändern.
   Alles steckt in dieser Datei, sie läuft per Doppelklick ohne Server.
 -->
-<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Archivo+Black&display=swap" rel="stylesheet">
 <style>
 ${css}
 
@@ -92,9 +92,9 @@ body {
   display: flex; justify-content: center; padding: 16px 0 40px;
 }
 /*
- * Breit genug für die DREIspaltige Ansicht (Trainer | Würfel | Zeit+Settings).
- * cube.css schaltet sie ab 860px Behälterbreite frei – bei 680px läge das
- * Beiwerk wieder unter dem Würfel und nähme ihm die Höhe.
+ * Breit genug für die DREIspaltige Ansicht (Trainer | Würfel | Zeiten).
+ * cube.css schaltet sie ab 1040px Behälterbreite frei – darunter rutscht der
+ * Trainer unter die Bühne.
  */
 #mount { width: min(1280px, 100%); }
 </style>

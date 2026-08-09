@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="cherrychrono – a rubik's cube timer with a virtual cube, cfop splits and your solving history.">
+<title>cherrychrono</title>
+
+<!-- Roter Chip als Favicon: dasselbe Zeichen wie das Logo auf der Seite. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23e8221f'/%3E%3Ctext x='16' y='24' font-family='Arial Black,Arial' font-size='22' font-style='italic' font-weight='900' fill='%23fff' text-anchor='middle'%3Ec%3C/text%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./cube.css">
+
+<style>
+  /*
+   * Die Seite gibt nur Untergrund, Schrift und den Akzent vor – alles Weitere
+   * bringt cube.css mit. Genau diese drei Werte erbt die App auch dort, wo sie
+   * eingebettet läuft; sie ist deshalb hier nicht anders gebaut als dort.
+   */
+  html, body { margin: 0; padding: 0; min-height: 100%; }
+
+  body {
+    background: #000;
+    color: #fff;
+    font-family: 'Courier Prime', 'Courier New', Courier, monospace;
+    font-size: 13px;
+    letter-spacing: -0.2px;
+    -webkit-font-smoothing: antialiased;
+    --accent: #e8221f;
+    display: flex;
+    justify-content: center;
+    padding: 16px 15px 40px;
+  }
+
+  #cherrychrono { width: min(1280px, 100%); }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #333; }
+</style>
+</head>
+<body>
+  <div id="cherrychrono"></div>
+
+  <script type="module" src="./js/embed.js"></script>
+  <script type="module">
+    window.CubeApp.mount(document.getElementById('cherrychrono'));
+  </script>
+</body>
+</html>

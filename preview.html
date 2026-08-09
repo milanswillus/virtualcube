@@ -3,20 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>cube preview (v2)</title>
-  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+  <title>cherrychrono · preview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Archivo+Black&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./cube.css">
   <script>
     // Klassisches Script: läuft VOR den Modul-Scripts, also bevor embed.js
     // seine Einstellungen aus dem localStorage liest.
-    // ?scheme=classic&view=hints&panels=1
+    // ?scheme=classic&view=hints&mode=timer&panels=1
     (function () {
       const p = new URLSearchParams(location.search);
       const s = {};
       if (p.get('scheme')) s.scheme = p.get('scheme');
       if (p.get('view')) s.view = p.get('view');
+      if (p.get('mode')) s.mode = p.get('mode');
       if (Object.keys(s).length) {
-        localStorage.setItem('mil4nde:cube:v2:settings', JSON.stringify(s));
+        localStorage.setItem('cherrychrono:v1:settings', JSON.stringify(s));
       }
     })();
   </script>
@@ -25,7 +26,7 @@
       margin: 0; background: #000; color: #fff;
       font-family: 'Courier Prime', monospace;
       --accent: #E62325;
-      display: flex; justify-content: center; padding: 16px 0 40px;
+      display: flex; justify-content: center; padding: 16px 15px 40px;
     }
     /* Breit genug für die dreispaltige Ansicht (siehe cube.css, 860px). */
     #mount { width: min(1280px, 100%); }

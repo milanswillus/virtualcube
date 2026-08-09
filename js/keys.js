@@ -14,11 +14,11 @@
  * getippt. Das entspricht dem, was man am Timer ohnehin tut.
  */
 
-import { KEY_LAYOUTS, MOVE_DEFS, DEFAULT_SETTINGS } from './config.js';
+import { KEY_LAYOUTS, MOVE_DEFS, FALLBACK_LAYOUT } from './config.js';
 
-/** Unbekannte Namen fallen auf die Voreinstellung zurück statt zu werfen. */
+/** Unbekannte Namen – auch "auto" – fallen auf ein echtes Layout zurück. */
 function movesToKeys(layout) {
-  return KEY_LAYOUTS[layout] ?? KEY_LAYOUTS[DEFAULT_SETTINGS.layout];
+  return KEY_LAYOUTS[layout] ?? KEY_LAYOUTS[FALLBACK_LAYOUT];
 }
 
 /** Alle Tasten für eine Vierteldrehung, z. B. "x" → ["t", "y"]. */
@@ -34,7 +34,7 @@ export function keysForQuarterTurn(token, layout) {
  */
 const keymapCache = new Map();
 export function keymapFor(layout) {
-  const name = KEY_LAYOUTS[layout] ? layout : DEFAULT_SETTINGS.layout;
+  const name = KEY_LAYOUTS[layout] ? layout : FALLBACK_LAYOUT;
   if (!keymapCache.has(name)) {
     const out = {};
     for (const [move, keys] of Object.entries(KEY_LAYOUTS[name])) {
@@ -110,4 +110,31 @@ export function keyTableRows(layout) {
     }
   }
   return rows;
+}
+
+/**
+ * Welches Layout liegt unter den Fingern?
+ *
+ * Gefragt wird die Taste, an der sich die beiden Belegungen unterscheiden: auf
+ * QWERTZ steht auf der Position `KeyY` ein Z. Das beantwortet die Frage direkt
+ * und ist unabhängig von der Sprache des Browsers – jemand kann eine deutsche
+ * Tastatur an einem englischen System haben.
+ *
+ * Die Keyboard-API gibt es allerdings nur in Chromium und nur im sicheren
+ * Kontext. Sonst bleibt die Oberflächensprache als Vermutung: sie liegt in den
+ * Ländern, die QWERTZ benutzen, meistens richtig, und falsch geraten kostet
+ * einen Klick in den Einstellungen.
+ *
+ * @returns {Promise<'qwerty'|'qwertz'>}
+ */
+export async function detectLayout() {
+  try {
+    const map = await navigator.keyboard.getLayoutMap();
+    const y = map.get('KeyY');
+    if (y === 'z') return 'qwertz';
+    if (y === 'y') return 'qwerty';
+  } catch (e) { /* keine Keyboard-API – dann über die Sprache */ }
+
+  return /^(de|cs|hu|sk|pl|sl|sr|hr|bs)\b/i.test(navigator.language || '')
+    ? 'qwertz' : FALLBACK_LAYOUT;
 }

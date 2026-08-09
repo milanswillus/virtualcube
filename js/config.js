@@ -30,14 +30,33 @@ export const CUBIE_GAP  = 0;
 /** Farbe des Würfelkörpers bzw. der nie sichtbaren Innenflächen. */
 export const INNER_COLOR = '#0a0a0a';
 
-/** Voreinstellungen des Einstellungs-Panels (siehe embed.js). */
+/**
+ * Voreinstellungen (siehe embed.js).
+ *
+ * `mode` und `scope` stehen bewusst hier mit drin, obwohl sie nicht im
+ * Einstellungs-Panel auftauchen: sie werden genauso gespeichert und sollen
+ * einen Reload überleben. Wer im Timer-Modus übt, will nach dem Neuladen nicht
+ * wieder im Virtual-Modus landen.
+ */
 export const DEFAULT_SETTINGS = {
-  scheme: 'classic',  // classic | minimal
-  view:   'solid',    // solid | ghost | hints
-  camera: 'angled',   // angled | front – Blickwinkel auf den Würfel
+  mode:   'virtual',  // virtual | timer – Würfel am Bildschirm oder in der Hand
+  scheme: 'minimal',  // classic | minimal
+  view:   'ghost',    // solid | ghost | hints
+  camera: 'front',    // angled | front – Blickwinkel auf den Würfel
   coach:  'on',       // on | off – CFOP-Hinweise dauerhaft einblenden
-  layout: 'qwerty',   // qwerty | qwertz – Tastaturbelegung
+  layout: 'auto',     // auto | qwerty | qwertz – Tastaturbelegung
+  scope:  'session',  // session | all – worauf sich Statistik und Diagramme beziehen
 };
+
+/**
+ * Belegung, wenn keine andere feststeht.
+ *
+ * MUSS ein echtes Layout sein und darf nicht auf `DEFAULT_SETTINGS.layout`
+ * zeigen: dort steht "auto", und "auto" ist keine Tabelle in KEY_LAYOUTS. Ein
+ * Fallback auf einen Namen, den es nicht gibt, wäre kein Fallback – der erste
+ * Tastendruck liefe in ein `undefined` (siehe keys.js).
+ */
+export const FALLBACK_LAYOUT = 'qwerty';
 
 /**
  * Blickrichtungen, die nie zum Betrachter zeigen.
