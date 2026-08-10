@@ -45,7 +45,12 @@
   --cb-gap: 12px;
 
   text-align: left;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 
   /*
    * Bezug für die Abfragen weiter unten. Es zählt die Breite, die die
@@ -53,6 +58,15 @@
    * mal in einer schmalen Spalte und mal über die ganze Seite.
    */
   container-type: inline-size;
+}
+
+.cb-app * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /*
@@ -242,6 +256,13 @@
  * beim Wechsel hinüber – die Bewegung sagt, dass es zwei Zustände desselben
  * Schalters sind und nicht zwei Knöpfe.
  */
+.cb-app[data-touch-only="true"] .cb-switch[data-key="mode"],
+@media (hover: none) and (pointer: coarse) {
+  .cb-switch[data-key="mode"] {
+    display: none !important;
+  }
+}
+
 .cb-switch {
   position: relative;
   display: grid;
@@ -424,7 +445,15 @@
  * die Zahl tritt zurück.
  */
 /* Die Karte ist im Timer-Modus zugleich die Fläche, die man antippt. */
-.cb-timecard { touch-action: manipulation; }
+.cb-timecard {
+  touch-action: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
 
 .cb-time {
   font-family: var(--cb-display);

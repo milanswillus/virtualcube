@@ -185,16 +185,12 @@ function loadSettings() {
       const parsed = JSON.parse(raw);
       if (parsed.coach === 'an') parsed.coach = 'on';
       if (parsed.coach === 'aus') parsed.coach = 'off';
-      return { ...DEFAULT_SETTINGS, ...parsed };
+      const settings = { ...DEFAULT_SETTINGS, ...parsed };
+      if (isTouchOnly()) settings.mode = 'timer';
+      return settings;
     }
   } catch (e) { /* localStorage kann blockiert sein – dann eben Defaults */ }
 
-  /*
-   * Beim ERSTEN Besuch entscheidet das Gerät: Der virtuelle Würfel braucht gut
-   * zwanzig Tasten, auf einem Handy ist er nicht bedienbar. Die Stoppuhr
-   * dagegen ist dort genau richtig – Würfel in der Hand, Telefon auf dem
-   * Tisch. Eine spätere eigene Wahl bleibt gespeichert und schlägt das hier.
-   */
   return { ...DEFAULT_SETTINGS, mode: isTouchOnly() ? 'timer' : DEFAULT_SETTINGS.mode };
 }
 
@@ -724,6 +720,10 @@ class CubeApp {
       if (session.settings.mode !== 'timer' || event.pointerType === 'mouse') return;
       if (this.phase === 'holding') this.holdEnd();
     });
+    pad.addEventListener('pointercancel', (event) => {
+      if (session.settings.mode !== 'timer' || event.pointerType === 'mouse') return;
+      if (this.phase === 'holding') this.holdEnd();
+    });
 
     /*
      * Das Logo kippt der Maus entgegen – dieselben Winkel wie auf milxn.de
@@ -745,7 +745,9 @@ class CubeApp {
 
   /** Eine Einstellung wurde geklickt – egal aus welcher Gruppe. */
   #choose(key, value) {
-    if (!key || session.settings[key] === value) return;
+    if (!key) return;
+    if (key === 'mode' && isTouchOnly()) value = 'timer';
+    if (session.settings[key] === value) return;
     session.settings[key] = value;
 
     /*
@@ -771,6 +773,10 @@ class CubeApp {
    * am .cb-app, das Aussehen entsteht daraus komplett im Stylesheet.
    */
   #applySettings() {
+    const touchOnly = isTouchOnly();
+    if (touchOnly) session.settings.mode = 'timer';
+    this.el.app.dataset.touchOnly = String(touchOnly);
+
     const keys = [...SETTING_GROUPS.map((g) => g.key), 'mode', 'scope'];
     for (const key of keys) {
       const value = session.settings[key];
