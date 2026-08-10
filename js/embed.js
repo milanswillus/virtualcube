@@ -431,6 +431,7 @@ class CubeApp {
           <div class="cb-logo"><span>cherrychrono</span></div>
           <div class="cb-top-meta">
             <span class="cb-mode-note"></span>
+            <a href="https://milxn.de" class="cb-me-link">me</a>
           </div>
         </header>
 
