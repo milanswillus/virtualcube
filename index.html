@@ -19,15 +19,16 @@
 
 <style>
   /*
-   * Die Seite gibt nur Untergrund, Schrift und den Akzent vor – alles Weitere
-   * bringt cube.css mit. Genau diese drei Werte erbt die App auch dort, wo sie
-   * eingebettet läuft; sie ist deshalb hier nicht anders gebaut als dort.
+   * Untergrund und Schriftfarbe kommen aus DEN VARIABLEN, nicht als feste
+   * Werte. Sonst bleibt die Seite schwarz, während die App auf Hell umschaltet
+   * – zu sehen als schwarzer Rand rings um die Karten, denn der Body ist
+   * grösser als das, was die App füllt.
    */
   html, body { margin: 0; padding: 0; min-height: 100%; }
 
   body {
-    background: #000;
-    color: #fff;
+    background: var(--cb-bg);
+    color: var(--cb-ink);
     font-family: 'Courier Prime', 'Courier New', Courier, monospace;
     font-size: 13px;
     letter-spacing: -0.2px;
@@ -42,8 +43,23 @@
 
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #333; }
+  ::-webkit-scrollbar-thumb { background: var(--cb-line); }
 </style>
+
+<script>
+  /*
+   * Das Thema MUSS vor dem ersten Malen stehen. Käme es erst mit embed.js,
+   * sähe man bei jedem Laden im hellen Thema kurz die schwarze Seite
+   * aufblitzen – ein Flackern, das kein Übergang glätten kann, weil es der
+   * erste Bildaufbau ist. Deshalb hier, klassisches Script, ohne defer.
+   */
+  (function () {
+    var theme = 'dark';
+    try { theme = localStorage.getItem('cherrychrono:v1:theme') || localStorage.getItem('milxn-theme') || 'dark'; }
+    catch (e) { /* localStorage kann blockiert sein */ }
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
 </head>
 <body>
   <div id="cherrychrono"></div>

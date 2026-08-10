@@ -86,7 +86,7 @@ const html = `<!DOCTYPE html>
 ${css}
 
 body {
-  margin: 0; background: #000; color: #fff;
+  margin: 0; background: var(--cb-bg); color: var(--cb-ink);
   font-family: 'Courier Prime', ui-monospace, SFMono-Regular, Menlo, monospace;
   --accent: #E62325;
   display: flex; justify-content: center; padding: 16px 0 40px;

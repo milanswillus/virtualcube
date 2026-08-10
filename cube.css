@@ -31,15 +31,11 @@
   --cb-hint-gap: 92px;   /* Abstand der versetzten Tafeln zur Würfelfläche */
 
   /*
-   * Linien und Flächen als neutrales Grau mit Deckkraft statt als feste Farbe:
-   * derselbe Wert trägt dadurch auf schwarzem wie auf weissem Grund, und die
-   * einbettende Seite darf ihr Thema umschalten, ohne dass hier etwas nachzieht.
+   * Linien, Flächen und Farben stehen NICHT hier, sondern in den beiden
+   * Themenblöcken weiter unten. Stünden sie zusätzlich hier, wäre bei jeder
+   * Änderung die Frage, welche der beiden Angaben gerade gewinnt – und das
+   * hängt an einem data-Attribut, das JavaScript setzt.
    */
-  --cb-line: rgba(128, 128, 128, 0.26);
-  --cb-line-soft: rgba(128, 128, 128, 0.14);
-  --cb-fill: rgba(128, 128, 128, 0.12);
-  --cb-bar: color-mix(in srgb, var(--cb-accent) 55%, transparent);
-
   --cb-display: 'Archivo Black', 'Arial Black', Impact, sans-serif;
   --cb-radius: 4px;      /* der Radius des Logo-Chips, überall derselbe */
   --cb-gap: 12px;
@@ -69,16 +65,18 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/*
- * Akzent und die Rampe der Abschnitte – cross · f2l · oll · pll, hell nach
- * dunkel. EINE Farbe in vier Stufen, weil die vier Abschnitte eine feste
- * Reihenfolge haben; vier verschiedene Farben würden behaupten, sie wären
- * gleichrangig.
+/* ── Die beiden Themen ──────────────────────────────────────────────────
  *
- * Je Untergrund eigene Stufen: die Rampe muss sich innerhalb ihrer vier
- * Schritte unterscheiden UND vom Grund abheben. Auf Schwarz geht das nach oben
- * (hell), auf Weiss nach unten (dunkel); dieselben vier Werte für beides gibt
- * es nicht. Welcher Fall vorliegt, misst embed.js an der geerbten Schriftfarbe.
+ * Untergrund, Schrift, Linien, Flächen und der Tooltip-Grund sind Wert für
+ * Wert die des Dashboards (dashboard/public/style.css). Wer beide Seiten
+ * nebeneinander offen hat, soll keinen Unterschied sehen.
+ *
+ * Die vier Abschnittsfarben sind bewusst NICHT von dort übernommen. Sie sind
+ * keine Themenfarbe, sondern eine Skala: cross · f2l · oll · pll liegen im
+ * gestapelten Balken direkt aneinander, und in der Rampe des Dashboards liegen
+ * zwei Nachbarn nur ΔE 13,6 auseinander – zu wenig, um f2l von oll zu
+ * unterscheiden. Die Stufen hier sind auf ≥ 15 aufgezogen und mit
+ * scripts/validate_palette.js geprüft, sonst identisch im Charakter.
  *
  * Der Tooltip steht ausserhalb von .cb-app (siehe unten) und braucht dieselben
  * Werte – deshalb hier gemeinsam, statt sie zweimal zu notieren.
@@ -110,23 +108,30 @@
   --cb-tip-bg: #ffffff;
 
   --cb-accent: var(--accent, #e8221f);
-  --cb-p0: #f9765f;
-  --cb-p1: #e8221f;
-  --cb-p2: #b5140f;
-  --cb-p3: #6e0c09;
+  --cb-p0: #fca07f;
+  --cb-p1: #ee4a2c;
+  --cb-p2: #ab120d;
+  --cb-p3: #4f0b09;
   --cb-bar: color-mix(in srgb, var(--cb-accent) 78%, transparent);
 }
 
-html, body {
+/*
+ * Der Themenwechsel läuft OHNE Überblendung – und das ist Absicht.
+ *
+ * Blendet man Untergrund und Schrift gleichzeitig in entgegengesetzte
+ * Richtungen (schwarz→weiss und weiss→schwarz), müssen sich beide in der Mitte
+ * treffen: dort steht Grau auf Grau. Nachgemessen fällt der Kontrast der
+ * Zeitangabe dabei auf 1,08:1 – sie ist für ein paar Bilder schlicht weg und
+ * kommt dann wieder. Das war das Flackern, und es lässt sich nicht
+ * wegtimen: es steckt in der Überblendung selbst.
+ *
+ * Ein harter Schnitt hat diesen Punkt nicht. Er ist die einzige bewusste
+ * Abweichung vom Dashboard, das mit 0,3 s überblendet (und denselben Durchgang
+ * hat, dort nur weniger sichtbar, weil nichts auf 30 % Deckkraft steht).
+ */
+html, body, .cb-app {
   background-color: var(--cb-bg);
   color: var(--cb-ink);
-  transition: background-color 0.25s ease, color 0.25s ease;
-}
-
-.cb-app {
-  background-color: var(--cb-bg);
-  color: var(--cb-ink);
-  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 .cb-app *,
@@ -504,7 +509,14 @@ html, body {
   letter-spacing: -0.045em;
   line-height: 0.95;
   font-variant-numeric: tabular-nums;
-  transition: color 0.15s ease, opacity 0.15s ease;
+
+  /*
+   * Nur die Deckkraft wird weich geblendet. Die FARBE springt: beim Halten
+   * soll die Zahl sofort rot sein, nicht in einer Achtelsekunde dorthin
+   * kriechen – und beim Themenwechsel folgt sie so dem Takt der Seite,
+   * statt ihm vorauszulaufen.
+   */
+  transition: opacity 0.15s ease;
 }
 
 /*
@@ -1224,10 +1236,10 @@ html, body {
   pointer-events: none;
   min-width: 120px;
   padding: 8px 10px;
-  border: 1px solid rgba(128, 128, 128, 0.35);
+  border: 1px solid var(--cb-line);
   border-radius: 4px;
-  background: #0a0a0a;
-  color: #fff;
+  background: var(--cb-tip-bg);
+  color: var(--cb-ink);
   font-family: 'Courier Prime', 'Courier New', monospace;
   font-size: 10px;
   line-height: 1.5;
@@ -1238,9 +1250,8 @@ html, body {
   transition: opacity 0.1s ease, visibility 0.1s ease;
 }
 
+/* Auf Weiss trägt derselbe Schatten zu dick auf. */
 .cb-tip[data-theme="light"] {
-  background: #ffffff;
-  color: #000000;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
 }
 

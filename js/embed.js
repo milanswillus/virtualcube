@@ -807,13 +807,27 @@ class CubeApp {
     this.#renderBinds();
   }
 
+  /**
+   * Hell oder dunkel – für die ganze Seite, nicht nur für die App.
+   *
+   * Das Attribut sitzt auch auf `html` und `body`, weil der Untergrund der
+   * Seite dahinter liegt: bliebe er schwarz, während die Karten weiss werden,
+   * sähe man rundherum einen schwarzen Rand.
+   *
+   * @param {'dark'|'light'} [theme] Nur beim Umschalten übergeben. Ohne
+   *   Argument wird das gespeicherte Thema bloss angewandt – und dann gibt es
+   *   auch nichts zu speichern.
+   */
   #applyTheme(theme) {
     const t = theme || session.theme || getSavedTheme();
     session.theme = t;
-    try {
-      localStorage.setItem('cherrychrono:v1:theme', t);
-      localStorage.setItem('milxn-theme', t);
-    } catch (e) {}
+
+    if (theme) {
+      try {
+        localStorage.setItem('cherrychrono:v1:theme', t);
+        localStorage.setItem('milxn-theme', t);
+      } catch (e) { /* localStorage kann blockiert sein */ }
+    }
 
     document.documentElement.setAttribute('data-theme', t);
     document.body.setAttribute('data-theme', t);
@@ -1070,11 +1084,12 @@ class CubeApp {
   }
 
   #renderCharts(solves) {
-    // Die einbettende Seite kann ihr Thema jederzeit umschalten. Hier ist der
-    // richtige Moment, das zu bemerken: gleich werden ohnehin alle Farben neu
-    // vergeben, und die Rampe hängt am Untergrund.
-    this.#applyTheme();
-
+    /*
+     * Hier stand einmal ein Aufruf von #applyTheme(): damals wurde das Thema
+     * bei jedem Zeichnen an der geerbten Schriftfarbe GEMESSEN. Seit es einen
+     * Schalter gibt, ändert es sich nur noch dort – und ein Schreiben in den
+     * localStorage bei jedem Bild einer Grössenänderung wäre reine Last.
+     */
     renderTimes(this.el.chartTimes, solves);
     renderPhases(this.el.chartPhases, solves);
     renderDistribution(this.el.chartDist, solves);
