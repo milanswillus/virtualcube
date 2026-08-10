@@ -171,7 +171,12 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
+}
+
+.cb-top-meta .cb-meta-dot {
+  opacity: 0.6;
+  user-select: none;
 }
 
 .cb-top-meta a.cb-me-link {
@@ -584,6 +589,10 @@
 .cb-app[data-state="scrambling"] .cb-cube,
 .cb-app[data-state="ready"] .cb-cube {
   animation: cbSpin 28s linear infinite;
+}
+
+.cb-app[data-spun="true"] .cb-cube {
+  animation: none !important;
 }
 
 .cb-app[data-state="solved"] .cb-cube {

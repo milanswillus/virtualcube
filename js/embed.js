@@ -431,6 +431,7 @@ class CubeApp {
           <div class="cb-logo"><span>cherrychrono</span></div>
           <div class="cb-top-meta">
             <span class="cb-mode-note"></span>
+            <span class="cb-meta-dot">·</span>
             <a href="https://milxn.de" class="cb-me-link">me</a>
           </div>
         </header>
@@ -1296,6 +1297,7 @@ class CubeApp {
    * und die zwanzig Animationsschritte wären reine Wartezeit.
    */
   #newScramble({ animate, keepState = false }) {
+    delete this.el.app.dataset.spun;
     this.state.reset();
     this.renderer.render();
     this.phases.reset();
@@ -1333,19 +1335,9 @@ class CubeApp {
     this.#newScramble({ animate: session.settings.mode === 'virtual' });
   }
 
-  /**
-   * Esc: den laufenden Versuch verwerfen – in JEDEM Zustand.
-   *
-   * Verworfen heisst verworfen: die Zeit wird nicht eingetragen. Der Scramble
-   * bleibt aber stehen, denn wer abbricht, will meistens genau diesen Scramble
-   * noch einmal – ein neuer wäre eine zweite, ungefragte Entscheidung.
-   */
+  /** Esc: den laufenden Versuch verwerfen – in JEDEM Zustand. */
   abort() {
-    if (this.phase === 'scrambling') return;
-
-    const wasRunning = this.phase === 'solving';
-    const wasHolding = this.phase === 'holding';
-
+    this.animator.clear();
     this.timer.reset();
     this.phases.reset();
     this.moveCount = 0;
@@ -1356,16 +1348,14 @@ class CubeApp {
     // auf "ready". Im Virtual-Modus wurde am Bildschirm gedreht – dort ist der
     // Versuch mit dem Abbruch vorbei, der Würfel bleibt, wie er steht.
     const back = session.settings.mode === 'timer' ? 'ready' : 'idle';
-    const note = wasRunning ? 'attempt discarded'
-      : wasHolding ? 'not started' : hintFor(session.settings.mode);
-    this.#setPhase(back, note);
+    this.#setPhase(back, hintFor(session.settings.mode));
     if (session.settings.mode === 'virtual') this.#recomputeCoach();
   }
 
   /** Backspace: im Virtual-Modus zurück auf gelöst, im Timer-Modus neu mischen. */
   resetCube() {
     if (session.settings.mode === 'timer') {
-      this.startScramble();
+      this.#newScramble({ animate: false });
       return;
     }
     this.animator.clear();
@@ -1392,6 +1382,12 @@ class CubeApp {
    */
   holdStart() {
     if (this.phase === 'solving') return;
+    if (session.settings.mode === 'timer') {
+      // Vorbereitung auf den nächsten Versuch: Scramble auf dem 3D-Modell zeigen
+      this.state.reset();
+      for (const token of this.scramble) this.state.applyMove(token);
+      this.renderer.render();
+    }
     this.timer.reset();
     this.#paintTimer();
     this.#setPhase('holding', 'let go to start');
@@ -1420,6 +1416,11 @@ class CubeApp {
      * deshalb `keepState`.
      */
     this.#newScramble({ animate: false, keepState: true });
+
+    // Sobald die Zeit gestoppt wird, ist der 3D-Würfel auf der Seite gelöst
+    this.state.reset();
+    this.renderer.render();
+
     this.#setPhase('solved', `${formatTime(ms)} · hold space for the next one`);
   }
 
@@ -1428,6 +1429,10 @@ class CubeApp {
   /** Ein Zug über die Tastatur. */
   handleMove(token) {
     if (this.phase === 'scrambling') return; // während des Mischens keine Eingabe
+
+    if (this.phase === 'ready') {
+      this.el.app.dataset.spun = 'true';
+    }
 
     // Ganzwürfel-Drehungen (x/y/z) starten die Zeit nicht – nur echte Züge.
     // Slice- und Wide-Moves verändern den Würfel und zählen deshalb mit.
