@@ -83,22 +83,50 @@
  * Der Tooltip steht ausserhalb von .cb-app (siehe unten) und braucht dieselben
  * Werte – deshalb hier gemeinsam, statt sie zweimal zu notieren.
  */
-.cb-app, .cb-tip {
+:root, :root[data-theme="dark"], body[data-theme="dark"], .cb-app[data-theme="dark"], .cb-tip[data-theme="dark"] {
+  color-scheme: dark;
+  --cb-bg: #000000;
+  --cb-ink: #ffffff;
+  --cb-line: rgba(255, 255, 255, 0.14);
+  --cb-line-soft: rgba(255, 255, 255, 0.08);
+  --cb-fill: rgba(255, 255, 255, 0.06);
+  --cb-tip-bg: #0a0a0a;
+
   --cb-accent: var(--accent, #e8221f);
   --cb-p0: #ffd6c9;
   --cb-p1: #fb8f68;
   --cb-p2: #e5231a;
   --cb-p3: #8a0d0a;
+  --cb-bar: color-mix(in srgb, var(--cb-accent) 55%, transparent);
 }
 
-.cb-app[data-theme="light"], .cb-tip[data-theme="light"] {
-  --cb-p0: #fca07f;
-  --cb-p1: #ee4a2c;
-  --cb-p2: #ab120d;
-  --cb-p3: #4f0b09;
+:root[data-theme="light"], body[data-theme="light"], .cb-app[data-theme="light"], .cb-tip[data-theme="light"] {
+  color-scheme: light;
+  --cb-bg: #ffffff;
+  --cb-ink: #000000;
+  --cb-line: rgba(0, 0, 0, 0.16);
+  --cb-line-soft: rgba(0, 0, 0, 0.09);
+  --cb-fill: rgba(0, 0, 0, 0.05);
+  --cb-tip-bg: #ffffff;
 
-  /* Auf Weiss trägt dieselbe Deckkraft weniger – der Balken darf kräftiger. */
+  --cb-accent: var(--accent, #e8221f);
+  --cb-p0: #f9765f;
+  --cb-p1: #e8221f;
+  --cb-p2: #b5140f;
+  --cb-p3: #6e0c09;
   --cb-bar: color-mix(in srgb, var(--cb-accent) 78%, transparent);
+}
+
+html, body {
+  background-color: var(--cb-bg);
+  color: var(--cb-ink);
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.cb-app {
+  background-color: var(--cb-bg);
+  color: var(--cb-ink);
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 .cb-app *,
@@ -191,6 +219,20 @@
 .cb-top-meta .cb-meta-dot {
   opacity: 0.6;
   user-select: none;
+}
+
+.cb-top-meta a.cb-theme-toggle {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 400;
+  opacity: 0.85;
+  transition: opacity 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+}
+
+.cb-top-meta a.cb-theme-toggle:hover {
+  opacity: 1;
+  color: var(--cb-accent);
 }
 
 .cb-top-meta a.cb-me-link {

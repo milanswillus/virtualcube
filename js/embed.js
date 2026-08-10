@@ -177,6 +177,14 @@ const PIECE_WHERE = {
   trapped: 'in wrong slot',
 };
 
+function getSavedTheme() {
+  try {
+    return localStorage.getItem('cherrychrono:v1:theme') || localStorage.getItem('milxn-theme') || 'dark';
+  } catch (e) {
+    return 'dark';
+  }
+}
+
 /** Einstellungen überleben auch einen Reload. */
 function loadSettings() {
   try {
@@ -426,7 +434,7 @@ class CubeApp {
           </div>
           <div class="cb-logo"><span>cherrychrono</span></div>
           <div class="cb-top-meta">
-            <span class="cb-mode-note"></span>
+            <a href="#" class="cb-theme-toggle">theme: dark</a>
             <span class="cb-meta-dot">·</span>
             <a href="https://milxn.de" class="cb-me-link">me</a>
           </div>
@@ -627,9 +635,9 @@ class CubeApp {
       cube:     q('.cb-cube'),
       scramble: q('.cb-scramble'),
       time:     q('.cb-time'),
-      hint:     q('.cb-hint'),
-      modeNote: q('.cb-mode-note'),
-      strip:    q('.cb-phase-strip'),
+      hint:        q('.cb-hint'),
+      themeToggle: q('.cb-theme-toggle'),
+      strip:       q('.cb-phase-strip'),
       times:    q('.cb-times'),
       best:     q('.cb-best'),
       ao5:      q('.cb-ao5'),
@@ -740,6 +748,15 @@ class CubeApp {
       event.currentTarget.style.transform = '';
     });
 
+    if (this.el.themeToggle) {
+      this.el.themeToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        const current = document.documentElement.getAttribute('data-theme') || session.theme || 'dark';
+        const next = current === 'dark' ? 'light' : 'dark';
+        this.#applyTheme(next);
+      });
+    }
+
     this.#applySettings();
   }
 
@@ -790,31 +807,30 @@ class CubeApp {
     this.#renderBinds();
   }
 
-  /**
-   * Hell oder dunkel? Die einbettende Seite kann beides sein, und die Rampe der
-   * Diagramme braucht je Untergrund eigene Stufen – ein dunkles Rot, das auf
-   * Schwarz noch trägt, verschwindet auf Weiss und umgekehrt.
-   *
-   * Gemessen wird die geerbte Textfarbe: helle Schrift heisst dunkler Grund.
-   * Das ist verlässlicher als ein Blick auf `background`, denn der Hintergrund
-   * liegt oft an einem ganz anderen Element als dem, das die Schrift setzt.
-   */
-  #applyTheme() {
-    const color = getComputedStyle(this.el.app).color;
-    const parts = color.match(/[\d.]+/g);
-    if (!parts) return;
-    const [r, g, b] = parts.map(Number);
-    const theme = (0.2126 * r + 0.7152 * g + 0.0722 * b) > 140 ? 'dark' : 'light';
-    this.el.app.dataset.theme = theme;
-    setTipTheme(theme);
+  #applyTheme(theme) {
+    const t = theme || session.theme || getSavedTheme();
+    session.theme = t;
+    try {
+      localStorage.setItem('cherrychrono:v1:theme', t);
+      localStorage.setItem('milxn-theme', t);
+    } catch (e) {}
+
+    document.documentElement.setAttribute('data-theme', t);
+    document.body.setAttribute('data-theme', t);
+    if (this.el && this.el.app) this.el.app.dataset.theme = t;
+
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) themeMeta.setAttribute('content', t === 'dark' ? '#000000' : '#ffffff');
+
+    if (this.el && this.el.themeToggle) {
+      this.el.themeToggle.textContent = `theme: ${t}`;
+    }
+    setTipTheme(t);
   }
 
   /** Moduswechsel: der Würfel bekommt eine neue Aufgabe. */
   #applyMode(initial = false) {
     const timerMode = session.settings.mode === 'timer';
-    this.el.modeNote.textContent = timerMode
-      ? 'stopwatch · you solve the real cube'
-      : 'keyboard cube · splits per cfop step';
 
     this.animator.clear();
     this.timer.reset();
